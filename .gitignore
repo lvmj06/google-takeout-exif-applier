@@ -1,0 +1,30 @@
+*.exe
+*.out
+*.app
+*.so
+*.dylib
+*.dll
+*.o
+*.a
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Build
+bin/
+dist/
+
+# Logs
+*.log
+
+# Temp
+tmp/
+temp/
