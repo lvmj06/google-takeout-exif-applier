@@ -158,12 +158,29 @@ func (p *Processor) processWorker(wg *sync.WaitGroup, jobChan chan fileJob) {
 	}
 }
 
-func (p *Processor) processMediaFile(mediaPath string) bool {
+func (p *Processor) checkSupplementalData(mediaPath string) (os.FileInfo, string, error) {
 	// Look for supplemental metadata file: [mediafile].supplemental-metadata.json
 	jsonPath := mediaPath + ".supplemental-metadata.json"
 
 	// Check if metadata exists
 	info, err := os.Stat(jsonPath)
+
+	if err == nil {
+		return info, jsonPath, err
+	}
+
+	if os.IsNotExist(err) {
+		jsonPath = mediaPath + ".suppl.json"
+		info, err = os.Stat(jsonPath)
+	}
+
+	return info, jsonPath, err
+}
+
+func (p *Processor) processMediaFile(mediaPath string) bool {
+	// Look for supplemental metadata file: [mediafile].supplemental-metadata.json
+	info, jsonPath, err := p.checkSupplementalData(mediaPath)
+
 	if err != nil {
 		if os.IsNotExist(err) {
 			if p.verbose {

@@ -227,7 +227,17 @@ func applyToVideo(videoPath string, meta *Metadata) (*ApplyResult, error) {
 	}
 
 	// Create a temporary output file
-	tempOutput := videoPath + ".tmp"
+	prefix := "_tmp_"
+
+	// Use filepath.Dir() to get "C:\\Users\\John\\Documents"
+	dir := filepath.Dir(videoPath)
+
+	// Use filepath.Base() to get "file.txt"
+	base := filepath.Base(videoPath)
+
+	// Join them together with the prefix using filepath.Join()
+	tempOutput := filepath.Join(dir, prefix+base)
+
 	defer func() {
 		os.Remove(tempOutput)
 	}()
