@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"sync"
@@ -159,19 +160,105 @@ func (p *Processor) processWorker(wg *sync.WaitGroup, jobChan chan fileJob) {
 }
 
 func (p *Processor) checkSupplementalData(mediaPath string) (os.FileInfo, string, error) {
-	// Look for supplemental metadata file: [mediafile].supplemental-metadata.json
-	jsonPath := mediaPath + ".supplemental-metadata.json"
+	var info os.FileInfo
+	var err error
+	var jsonPath string
+	var newMediaPath string
 
-	// Check if metadata exists
-	info, err := os.Stat(jsonPath)
+	// Check first if json will be found by replacing the file extension with json.
+	ext := filepath.Ext(mediaPath)
+	newMediaPath = mediaPath
+	jsonPath = strings.TrimSuffix(mediaPath, ext) + ".json"
+
+	info, err = os.Stat(jsonPath)
 
 	if err == nil {
 		return info, jsonPath, err
 	}
 
-	if os.IsNotExist(err) {
-		jsonPath = mediaPath + ".suppl.json"
+	// Check if media path has (1), (2) suffixes before extension.
+	// Compile the regex once for efficiency
+	//var re = regexp.MustCompile(`\((\d+)\)(\.[^.]+)?$`)
+	var re = regexp.MustCompile(`\(\d+\)`)
+	var matches []string
+	var match string
+
+	// FindStringSubmatch returns a slice of strings:
+	// [full_match, captured_group_1, captured_group_2, ...]
+	// In our regex, captured_group_1 will be the '1' or '2'
+	idx := strings.LastIndex(mediaPath, `\`)
+	if idx != -1 {
+		matches = re.FindAllString(mediaPath[idx+1:], -1)
+	}
+
+	if len(matches) == 1 {
+		match = matches[0]
+		fileName := strings.Replace(mediaPath[idx+1:], match, "", 1)
+		newMediaPath = mediaPath[:idx+1] + fileName
+	} else {
+		newMediaPath = mediaPath
+	}
+
+	jsonSuffixes := [...]string{
+		"",
+		".supplemental-metadata",
+		".supplemental-metadat",
+		".supplemental-metada",
+		".supplemental-metad",
+		".supplemental-meta",
+		".supplemental-met",
+		".supplemental-me",
+		".supplemental-m",
+		".supplemental-",
+		".supplemental",
+		".supplementa",
+		".supplement",
+		".supplemen",
+		".suppleme",
+		".supplem",
+		".supple",
+		".suppl",
+		".supp",
+		".sup",
+		".su",
+		".s",
+	}
+
+	for _, suffix := range jsonSuffixes {
+		// Look for supplemental metadata file: [mediafile].supplemental-metadata.json
+		if match != "" {
+			suffix = suffix + match + ".json"
+		} else {
+			suffix = suffix + ".json"
+		}
+
+		jsonPath = newMediaPath + suffix
+
+		// Check if metadata exists
 		info, err = os.Stat(jsonPath)
+
+		if err == nil {
+			return info, jsonPath, err
+		}
+	}
+
+	// Reset newMediaPath
+	newMediaPath = mediaPath
+
+	// Another check for files with (1), (2)... but are not duplicates
+	for _, suffix := range jsonSuffixes {
+
+		// Look for supplemental metadata file: [mediafile].supplemental-metadata.json
+		suffix = suffix + ".json"
+
+		jsonPath = newMediaPath + suffix
+
+		// Check if metadata exists
+		info, err = os.Stat(jsonPath)
+
+		if err == nil {
+			return info, jsonPath, err
+		}
 	}
 
 	return info, jsonPath, err
@@ -300,6 +387,7 @@ func isSupportedMediaFile(path string) bool {
 		".tif":  true,
 		".heic": true,
 		".heif": true,
+		".dng":  true,
 	}
 
 	// Video formats

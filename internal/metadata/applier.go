@@ -45,6 +45,7 @@ func isImageFile(path string) bool {
 		".tif":  true,
 		".heic": true,
 		".heif": true,
+		".dng":  true,
 	}
 	return imageExts[ext]
 }
